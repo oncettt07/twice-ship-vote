@@ -3,8 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TWICE Ship Vote - Pro Dashboard</title>
+    <title>TWICE Ship Vote - Real-time Edition</title>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;500&display=swap" rel="stylesheet">
+    
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+
     <style>
         :root { --twice-pink: #ff4081; --dark: #121212; --card-bg: #1e1e1e; }
         body { font-family: 'Kanit', sans-serif; background-color: var(--dark); color: white; margin: 0; padding: 20px; text-align: center; }
@@ -25,24 +29,26 @@
         .btn-confirm { background: var(--twice-pink); color: white; border: none; padding: 15px; border-radius: 30px; font-size: 20px; font-weight: bold; cursor: pointer; width: 100%; }
 
         /* Result Dashboard */
-        .result-item { background: var(--card-bg); border-radius: 20px; padding: 15px; margin-bottom: 15px; display: flex; align-items: center; gap: 15px; position: relative; overflow: hidden; border-left: 6px solid var(--twice-pink); }
-        .result-photos { display: flex; gap: -10px; } /* Stack photos slightly */
+        .result-item { background: var(--card-bg); border-radius: 20px; padding: 15px; margin-bottom: 15px; display: flex; align-items: center; gap: 15px; border-left: 6px solid var(--twice-pink); }
+        .result-photos { display: flex; }
         .res-img { width: 50px; height: 50px; border-radius: 50%; border: 2px solid var(--twice-pink); object-fit: cover; margin-right: -15px; background: #333; }
         .result-info { flex-grow: 1; text-align: left; margin-left: 20px; }
         .ship-title { font-size: 18px; font-weight: bold; display: block; }
         .member-sub { font-size: 12px; color: #aaa; }
-        .vote-count-badge { background: var(--twice-pink); padding: 5px 15px; border-radius: 15px; font-weight: bold; min-width: 50px; }
+        .vote-count-badge { background: var(--twice-pink); padding: 5px 15px; border-radius: 15px; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h1 style="color: var(--twice-pink);">🍭 TWICE Ship Vote</h1>
+    <p style="color: #888;">ข้อมูลจะรวมกันแบบ Real-time จากทุกคนที่โหวต!</p>
+    
     <div id="memberGrid" class="member-grid"></div>
 
     <div id="dashboard">
-        <h2 style="text-align: left; margin-top: 40px; border-bottom: 1px solid #333; padding-bottom: 10px;">🏆 อันดับความฮอต</h2>
-        <div id="voteResults"></div>
+        <h2 style="text-align: left; margin-top: 40px; border-bottom: 1px solid #333; padding-bottom: 10px;">🏆 อันดับความฮอตตอนนี้</h2>
+        <div id="voteResults">กำลังโหลดคะแนน...</div>
     </div>
 </div>
 
@@ -54,12 +60,29 @@
             <span>❤️</span>
             <img id="img2" class="preview-img">
         </div>
-        <button class="btn-confirm" onclick="submitVote()">โหวตคู่นี้!</button>
+        <button class="btn-confirm" onclick="submitVote()">โหวตเลย!</button>
         <button style="background:none; border:none; color:#888; margin-top:10px; cursor:pointer;" onclick="closeModal()">ยกเลิก</button>
     </div>
 </div>
 
 <script>
+    // 2. ใส่ค่า Config ที่คุณส่งมา
+    const firebaseConfig = {
+        apiKey: "AIzaSyBNekaRne5Df7fAT5AYPHj0JAxU0CTJniE",
+        authDomain: "twicevote-1afb1.firebaseapp.com",
+        databaseURL: "https://twicevote-1afb1-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "twicevote-1afb1",
+        storageBucket: "twicevote-1afb1.firebasestorage.app",
+        messagingSenderId: "425724964279",
+        appId: "1:425724964279:web:86dfb7f093772e91fa4c32",
+        measurementId: "G-NT2THW4EK4"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // ข้อมูลรูปภาพ (คุณสามารถเปลี่ยนลิงก์รูปจริงได้ตรงนี้)
     const memberPhotos = {
         "Nayeon": "https://i.pinimg.com/736x/6d/67/15/6d6715b00cf184b780b53684cd7bf9fa.jpg",
         "Jeongyeon": "https://i.pinimg.com/736x/0d/c3/36/0dc33624e51b1f2210b0888b66edaea2.jpg",
@@ -84,75 +107,4 @@
 
     let selected = [];
 
-    // สร้างปุ่มเลือกเมมเบอร์
-    const grid = document.getElementById('memberGrid');
-    Object.keys(memberPhotos).forEach(name => {
-        const div = document.createElement('div');
-        div.className = 'member-card';
-        div.innerHTML = `<img src="${memberPhotos[name]}"><div class="member-name">${name}</div>`;
-        div.onclick = () => {
-            if (selected.includes(name)) {
-                selected = selected.filter(x => x !== name);
-                div.classList.remove('selected');
-            } else if (selected.length < 2) {
-                selected.push(name);
-                div.classList.add('selected');
-                if (selected.length === 2) openModal();
-            }
-        };
-        grid.appendChild(div);
-    });
-
-    function openModal() {
-        const key = [...selected].sort().join("-");
-        document.getElementById('shipNameDisplay').innerText = shipNames[key] || selected.join(" x ");
-        document.getElementById('img1').src = memberPhotos[selected[0]];
-        document.getElementById('img2').src = memberPhotos[selected[1]];
-        document.getElementById('voteModal').style.display = 'flex';
-    }
-
-    function closeModal() {
-        document.getElementById('voteModal').style.display = 'none';
-        selected = [];
-        document.querySelectorAll('.member-card').forEach(c => c.classList.remove('selected'));
-    }
-
-    function submitVote() {
-        const key = [...selected].sort().join("-"); // เก็บเป็นชื่อเมมเบอร์เพื่อให้ดึงรูปได้ง่าย
-        let data = JSON.parse(localStorage.getItem('twice_ship_v3')) || {};
-        data[key] = (data[key] || 0) + 1;
-        localStorage.setItem('twice_ship_v3', JSON.stringify(data));
-        closeModal();
-        renderResults();
-    }
-
-    function renderResults() {
-        const data = JSON.parse(localStorage.getItem('twice_ship_v3')) || {};
-        const res = document.getElementById('voteResults');
-        res.innerHTML = "";
-        
-        // เรียงคะแนนจากมากไปน้อย
-        Object.entries(data).sort((a,b) => b[1] - a[1]).forEach(([key, count]) => {
-            const [m1, m2] = key.split("-");
-            const shipName = shipNames[key] || `${m1} x ${m2}`;
-            
-            res.innerHTML += `
-                <div class="result-item">
-                    <div class="result-photos">
-                        <img src="${memberPhotos[m1]}" class="res-img">
-                        <img src="${memberPhotos[m2]}" class="res-img">
-                    </div>
-                    <div class="result-info">
-                        <span class="ship-title">${shipName}</span>
-                        <span class="member-sub">${m1} + ${m2}</span>
-                    </div>
-                    <div class="vote-count-badge">${count} โหวต</div>
-                </div>
-            `;
-        });
-    }
-
-    renderResults();
-</script>
-</body>
-</html>
+    // สร้าง Grid เมม
