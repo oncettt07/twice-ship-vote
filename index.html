@@ -3,76 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TWICE Ship Vote - Real-time Edition</title>
+    <title>TWICE Concert Vote - Grand Finale</title>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;500&display=swap" rel="stylesheet">
-    
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
-
     <style>
-        :root { --twice-pink: #ff4081; --twice-apricot: #f68a5c; --dark: #121212; --card-bg: #1e1e1e; }
-        body { font-family: 'Kanit', sans-serif; background-color: var(--dark); color: white; margin: 0; padding: 20px; text-align: center; overflow-x: hidden; }
+        :root { --twice-pink: #ff4081; --twice-apricot: #f68a5c; --dark: #121212; }
+        body { font-family: 'Kanit', sans-serif; background-color: var(--dark); color: white; margin: 0; padding: 20px; text-align: center; }
         .container { max-width: 600px; margin: auto; }
+        .member-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 20px 0; }
+        .member-card { background: #222; border-radius: 12px; padding: 10px; cursor: pointer; border: 2px solid transparent; }
+        .member-card img { width: 100%; aspect-ratio: 1; border-radius: 10px; object-fit: cover; }
+        .member-card.selected { border-color: var(--twice-pink); transform: scale(1.05); }
+
+        /* Winner Overlay */
+        #winnerOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 9999; flex-direction: column; justify-content: center; align-items: center; }
+        .winner-content { animation: winnerZoom 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes winnerZoom { from { transform: scale(0); } to { transform: scale(1); } }
+        .winner-title { font-size: 40px; color: gold; text-shadow: 0 0 20px gold; margin-bottom: 20px; }
+        .winner-photos { display: flex; gap: 20px; margin-bottom: 20px; }
+        .winner-img { width: 140px; height: 140px; border-radius: 50%; border: 5px solid gold; box-shadow: 0 0 30px rgba(255,215,0,0.5); }
         
-        /* Member Selection */
-        .member-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 20px 0; }
-        .member-card { background: #222; border-radius: 15px; padding: 10px; cursor: pointer; border: 3px solid transparent; transition: 0.2s; }
-        .member-card.selected { border-color: var(--twice-pink); transform: scale(1.05); box-shadow: 0 0 15px var(--twice-pink); }
-        .member-card img { width: 100%; aspect-ratio: 1; border-radius: 12px; object-fit: cover; background: #333; }
-        .member-name { margin-top: 8px; font-size: 14px; }
-
-        /* Modal & Pop-up */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); justify-content: center; align-items: center; z-index: 2000; }
-        .modal-content { background: #fff; color: #333; padding: 25px; border-radius: 25px; width: 85%; max-width: 350px; position: relative; }
-        .preview-flex { display: flex; justify-content: center; align-items: center; gap: 10px; margin: 20px 0; }
-        .preview-img { width: 80px; height: 80px; border-radius: 50%; border: 3px solid var(--twice-pink); object-fit: cover; }
-        .btn-confirm { background: linear-gradient(to right, var(--twice-pink), var(--twice-apricot)); color: white; border: none; padding: 15px; border-radius: 30px; font-size: 20px; font-weight: bold; cursor: pointer; width: 100%; box-shadow: 0 4px 15px rgba(255, 64, 129, 0.4); }
-
-        #successPopup { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; color: var(--twice-pink); padding: 30px; border-radius: 20px; box-shadow: 0 0 30px rgba(0,0,0,0.5); z-index: 3000; font-size: 24px; font-weight: bold; border: 4px solid var(--twice-pink); animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        @keyframes popIn { from { transform: translate(-50%, -50%) scale(0.5); opacity: 0; } to { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
-
-        /* Candy Bong Particle */
-        .candy-bong { position: fixed; font-size: 30px; pointer-events: none; z-index: 2500; }
-
-        /* Result Dashboard */
-        .result-item { background: var(--card-bg); border-radius: 20px; padding: 15px; margin-bottom: 12px; display: flex; align-items: center; gap: 15px; border-left: 6px solid var(--twice-pink); }
-        .res-photos { display: flex; margin-right: 10px; }
-        .res-img { width: 50px; height: 50px; border-radius: 50%; border: 2px solid var(--twice-pink); object-fit: cover; margin-right: -15px; background: #333; }
-        .result-info { flex-grow: 1; text-align: left; margin-left: 15px; }
-        .ship-title { font-size: 18px; font-weight: bold; color: white; }
-        .member-sub { font-size: 12px; color: #aaa; }
-        .vote-count-badge { background: var(--twice-pink); padding: 5px 15px; border-radius: 15px; font-weight: bold; color: white; }
+        .result-item { background: #1e1e1e; border-radius: 15px; padding: 12px; margin-bottom: 10px; display: flex; align-items: center; border-left: 5px solid var(--twice-pink); }
+        .res-img { width: 45px; height: 45px; border-radius: 50%; border: 2px solid var(--twice-pink); margin-right: -10px; }
+        .vote-count-badge { background: var(--twice-pink); padding: 5px 12px; border-radius: 15px; margin-left: auto; font-weight: bold; }
+        #closedBanner { display: none; background: #ff4444; padding: 15px; border-radius: 15px; margin-bottom: 20px; font-weight: bold; }
     </style>
 </head>
 <body>
 
+<div id="winnerOverlay">
+    <div class="winner-content">
+        <div class="winner-title">👑 WINNER 👑</div>
+        <div class="winner-photos">
+            <img id="winnerImg1" class="winner-img">
+            <img id="winnerImg2" class="winner-img">
+        </div>
+        <h1 id="winnerName" style="font-size: 50px; margin: 0; color: var(--twice-pink);"></h1>
+        <p id="winnerVotes" style="font-size: 24px; color: #fff;"></p>
+        <button onclick="location.reload()" style="margin-top:30px; padding:10px 20px; border-radius:20px; background:white; color:black; border:none; cursor:pointer;">ดูผลทั้งหมด</button>
+    </div>
+</div>
+
 <div class="container">
-    <h1 style="color: var(--twice-pink); text-shadow: 0 0 10px rgba(255,64,129,0.3);">🍭 TWICE Ship Vote</h1>
-    <div id="memberGrid" class="member-grid"></div>
+    <h1 style="color: var(--twice-pink);">🍭 TWICE Ship Vote</h1>
+    <div id="closedBanner">🛑 การโหวตสิ้นสุดลงแล้ว!</div>
+    
+    <div id="votingArea">
+        <div id="memberGrid" class="member-grid"></div>
+    </div>
 
     <div id="dashboard">
-        <h2 style="text-align: left; margin-top: 40px; border-bottom: 1px solid #333; padding-bottom: 10px;">🏆 อันดับความฮอต (Real-time)</h2>
-        <div id="voteResults">กำลังโหลดข้อมูล...</div>
+        <h2 style="text-align: left; border-bottom: 1px solid #333; padding-bottom: 10px;">📊 Real-time Ranking</h2>
+        <div id="voteResults">กำลังดึงคะแนน...</div>
     </div>
 </div>
-
-<div id="voteModal" class="modal">
-    <div class="modal-content">
-        <h2 id="shipNameDisplay" style="margin:0; color: var(--twice-pink); font-size: 35px;"></h2>
-        <div class="preview-flex">
-            <img id="img1" class="preview-img">
-            <span style="font-size: 24px;">❤️</span>
-            <img id="img2" class="preview-img">
-        </div>
-        <button class="btn-confirm" id="confirmBtn" onclick="submitVoteWithEffect()">ยืนยันโหวต!</button>
-        <button style="background:none; border:none; color:#888; margin-top:15px; cursor:pointer;" onclick="closeModal()">ยกเลิก</button>
-    </div>
-</div>
-
-<div id="successPopup">🍭 Voted เรียบร้อย!</div>
 
 <script>
-    // ใช้ข้อมูล Firebase ของคุณ
     const firebaseConfig = {
         apiKey: "AIzaSyBNekaRne5Df7fAT5AYPHj0JAxU0CTJniE",
         authDomain: "twicevote-1afb1.firebaseapp.com",
@@ -109,101 +96,74 @@
     };
 
     let selected = [];
+    let isClosed = false;
 
+    // ระบบปิดโหวต: ฟังค่าจาก Firebase ที่ 'voting_status'
+    db.ref('voting_status').on('value', (snap) => {
+        if (snap.val() === 'closed') {
+            isClosed = true;
+            document.getElementById('votingArea').style.display = 'none';
+            document.getElementById('closedBanner').style.display = 'block';
+            showWinnerOverlay();
+        }
+    });
+
+    function showWinnerOverlay() {
+        db.ref('votes').once('value', (snap) => {
+            const data = snap.val() || {};
+            const sorted = Object.entries(data).sort((a,b) => b[1]-a[1]);
+            if (sorted.length > 0) {
+                const winnerKey = sorted[0][0];
+                const winnerCount = sorted[0][1];
+                const [m1, m2] = winnerKey.split("-");
+                document.getElementById('winnerImg1').src = memberPhotos[m1];
+                document.getElementById('winnerImg2').src = memberPhotos[m2];
+                document.getElementById('winnerName').innerText = shipNames[winnerKey] || winnerKey;
+                document.getElementById('winnerVotes').innerText = winnerCount + " โหวต";
+                document.getElementById('winnerOverlay').style.display = 'flex';
+            }
+        });
+    }
+
+    // สร้าง Grid เมมเบอร์ (เหมือนเดิม)
     const grid = document.getElementById('memberGrid');
     Object.keys(memberPhotos).forEach(name => {
         const div = document.createElement('div');
         div.className = 'member-card';
-        div.innerHTML = `<img src="${memberPhotos[name]}"><div class="member-name">${name}</div>`;
+        div.innerHTML = `<img src="${memberPhotos[name]}"><div>${name}</div>`;
         div.onclick = () => {
+            if (isClosed) return;
+            // ... Logic เลือก 2 คน และส่งโหวต (เหมือนเดิม)
             if (selected.includes(name)) {
                 selected = selected.filter(x => x !== name);
                 div.classList.remove('selected');
             } else if (selected.length < 2) {
                 selected.push(name);
                 div.classList.add('selected');
-                if (selected.length === 2) openModal();
+                if (selected.length === 2) {
+                    const key = [...selected].sort().join("-");
+                    db.ref('votes/' + key).transaction(c => (c || 0) + 1);
+                    selected = [];
+                    document.querySelectorAll('.member-card').forEach(c => c.classList.remove('selected'));
+                    alert("โหวตสำเร็จ!");
+                }
             }
         };
         grid.appendChild(div);
     });
-
-    function openModal() {
-        const key = [...selected].sort().join("-");
-        document.getElementById('shipNameDisplay').innerText = shipNames[key] || selected.join(" x ");
-        document.getElementById('img1').src = memberPhotos[selected[0]];
-        document.getElementById('img2').src = memberPhotos[selected[1]];
-        document.getElementById('voteModal').style.display = 'flex';
-    }
-
-    function closeModal() {
-        document.getElementById('voteModal').style.display = 'none';
-        selected = [];
-        document.querySelectorAll('.member-card').forEach(c => c.classList.remove('selected'));
-    }
-
-    // ฟังก์ชันโหวตพร้อมเอฟเฟกต์แคนดี้บงกระเด็น
-    function submitVoteWithEffect() {
-        const btn = document.getElementById('confirmBtn');
-        const rect = btn.getBoundingClientRect();
-
-        // 1. สร้าง Candy Bong กระเด็น
-        for (let i = 0; i < 15; i++) {
-            createParticle(rect.left + rect.width / 2, rect.top + rect.height / 2);
-        }
-
-        // 2. ส่งข้อมูลไป Firebase
-        const key = [...selected].sort().join("-");
-        db.ref('votes/' + key).transaction(c => (c || 0) + 1);
-
-        // 3. แสดง Pop-up สำเร็จ
-        document.getElementById('voteModal').style.display = 'none';
-        const success = document.getElementById('successPopup');
-        success.style.display = 'block';
-        
-        setTimeout(() => {
-            success.style.display = 'none';
-            closeModal();
-        }, 2000);
-    }
-
-    function createParticle(x, y) {
-        const p = document.createElement('div');
-        p.className = 'candy-bong';
-        p.innerText = '🍭';
-        document.body.appendChild(p);
-        const destX = x + (Math.random() - 0.5) * 500;
-        const destY = y + (Math.random() - 0.5) * 500;
-        const animation = p.animate([
-            { transform: `translate(${x}px, ${y}px) rotate(0deg)`, opacity: 1 },
-            { transform: `translate(${destX}px, ${destY}px) rotate(720deg)`, opacity: 0 }
-        ], { duration: 1000, easing: 'ease-out' });
-        animation.onfinish = () => p.remove();
-    }
 
     function listenToVotes() {
         db.ref('votes').on('value', (snap) => {
             const data = snap.val() || {};
             const res = document.getElementById('voteResults');
             res.innerHTML = "";
-            const sorted = Object.entries(data).sort((a,b) => b[1]-a[1]);
-            
-            if (sorted.length === 0) {
-                res.innerHTML = "<p style='color:#666;'>ยังไม่มีการโหวต ประเดิมคนแรกเลย!</p>";
-                return;
-            }
-
-            sorted.forEach(([key, count]) => {
+            Object.entries(data).sort((a,b) => b[1]-a[1]).forEach(([key, count]) => {
                 const [m1, m2] = key.split("-");
                 res.innerHTML += `
                     <div class="result-item">
-                        <div class="res-photos">
-                            <img src="${memberPhotos[m1]}" class="res-img">
-                            <img src="${memberPhotos[m2]}" class="res-img">
-                        </div>
-                        <div class="result-info">
-                            <span class="ship-title">${shipNames[key] || key}</span>
-                            <span class="member-sub">${m1} + ${m2}</span>
+                        <img src="${memberPhotos[m1]}" class="res-img"><img src="${memberPhotos[m2]}" class="res-img">
+                        <div style="margin-left:25px; text-align:left;">
+                            <b>${shipNames[key] || key}</b>
                         </div>
                         <div class="vote-count-badge">${count}</div>
                     </div>`;
