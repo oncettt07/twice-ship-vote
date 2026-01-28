@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TWICE Ship Vote - Pro Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;500&display=swap" rel="stylesheet">
+    <style>
+        :root { --twice-pink: #ff4081; --dark: #121212; --card-bg: #1e1e1e; }
+        body { font-family: 'Kanit', sans-serif; background-color: var(--dark); color: white; margin: 0; padding: 20px; text-align: center; }
+        .container { max-width: 600px; margin: auto; }
+        
+        /* Member Grid */
+        .member-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 20px 0; }
+        .member-card { background: #222; border-radius: 15px; padding: 10px; cursor: pointer; border: 3px solid transparent; transition: 0.2s; }
+        .member-card.selected { border-color: var(--twice-pink); transform: scale(1.05); box-shadow: 0 0 15px var(--twice-pink); }
+        .member-card img { width: 100%; aspect-ratio: 1; border-radius: 12px; object-fit: cover; background: #333; }
+        .member-name { margin-top: 8px; font-size: 14px; }
+
+        /* Modal */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); justify-content: center; align-items: center; z-index: 2000; }
+        .modal-content { background: #fff; color: #333; padding: 25px; border-radius: 25px; width: 85%; max-width: 400px; }
+        .preview-flex { display: flex; justify-content: center; align-items: center; gap: 10px; margin: 20px 0; }
+        .preview-img { width: 100px; height: 100px; border-radius: 15px; border: 3px solid var(--twice-pink); object-fit: cover; }
+        .btn-confirm { background: var(--twice-pink); color: white; border: none; padding: 15px; border-radius: 30px; font-size: 20px; font-weight: bold; cursor: pointer; width: 100%; }
+
+        /* Result Dashboard */
+        .result-item { background: var(--card-bg); border-radius: 20px; padding: 15px; margin-bottom: 15px; display: flex; align-items: center; gap: 15px; position: relative; overflow: hidden; border-left: 6px solid var(--twice-pink); }
+        .result-photos { display: flex; gap: -10px; } /* Stack photos slightly */
+        .res-img { width: 50px; height: 50px; border-radius: 50%; border: 2px solid var(--twice-pink); object-fit: cover; margin-right: -15px; background: #333; }
+        .result-info { flex-grow: 1; text-align: left; margin-left: 20px; }
+        .ship-title { font-size: 18px; font-weight: bold; display: block; }
+        .member-sub { font-size: 12px; color: #aaa; }
+        .vote-count-badge { background: var(--twice-pink); padding: 5px 15px; border-radius: 15px; font-weight: bold; min-width: 50px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1 style="color: var(--twice-pink);">🍭 TWICE Ship Vote</h1>
+    <div id="memberGrid" class="member-grid"></div>
+
+    <div id="dashboard">
+        <h2 style="text-align: left; margin-top: 40px; border-bottom: 1px solid #333; padding-bottom: 10px;">🏆 อันดับความฮอต</h2>
+        <div id="voteResults"></div>
+    </div>
+</div>
+
+<div id="voteModal" class="modal">
+    <div class="modal-content">
+        <h2 id="shipNameDisplay" style="margin:0; color: var(--twice-pink); font-size: 35px;"></h2>
+        <div class="preview-flex">
+            <img id="img1" class="preview-img">
+            <span>❤️</span>
+            <img id="img2" class="preview-img">
+        </div>
+        <button class="btn-confirm" onclick="submitVote()">โหวตคู่นี้!</button>
+        <button style="background:none; border:none; color:#888; margin-top:10px; cursor:pointer;" onclick="closeModal()">ยกเลิก</button>
+    </div>
+</div>
+
+<script>
+    const memberPhotos = {
+        "Nayeon": "https://i.pinimg.com/736x/6d/67/15/6d6715b00cf184b780b53684cd7bf9fa.jpg",
+        "Jeongyeon": "https://i.pinimg.com/736x/0d/c3/36/0dc33624e51b1f2210b0888b66edaea2.jpg",
+        "Momo": "https://i.pinimg.com/736x/2d/96/bb/2d96bb2864427542942e5db59eceedbd.jpg",
+        "Sana": "https://i.pinimg.com/736x/f3/77/90/f37790a6d2c0b4e70695b2ada1c61d6d.jpg",
+        "Jihyo": "https://i.pinimg.com/736x/f4/08/7c/f4087cd2f2022785a84e8b60405431d9.jpg",
+        "Mina": "https://i.pinimg.com/736x/2b/2c/dc/2b2cdce500937e1560b820602e811fdd.jpg",
+        "Dahyun": "https://i.pinimg.com/736x/66/2b/d9/662bd98ca61e4ec719047109d301ea80.jpg",
+        "Chaeyoung": "https://i.pinimg.com/736x/89/28/c3/8928c35a2fc34b9a0927ab63c6304727.jpg",
+        "Tzuyu": "https://i.pinimg.com/736x/27/dc/16/27dc169eefd7ae58818beb366374dfed.jpg"
+    };
+
+    const shipNames = {
+        "Jeongyeon-Nayeon": "2yeon", "Momo-Nayeon": "NaMo", "Nayeon-Sana": "Sanayeon", "Jihyo-Nayeon": "NaHyo", "Mina-Nayeon": "Minayeon", "Dahyun-Nayeon": "YeonDub", "Chaeyoung-Nayeon": "NaChaeng", "Nayeon-Tzuyu": "NaTzu",
+        "Jeongyeon-Momo": "JeongMo", "Jeongyeon-Sana": "230s", "Jeongyeon-Jihyo": "JeongHyo", "Jeongyeon-Mina": "JeongMi", "Dahyun-Jeongyeon": "DaJeong", "Chaeyoung-Jeongyeon": "NoJams", "Jeongyeon-Tzuyu": "JeongTzu",
+        "Momo-Sana": "MoSa", "Jihyo-Momo": "MoJi", "Mina-Momo": "Mimo", "Dahyun-Momo": "Dahmo", "Chaeyoung-Momo": "MoChaeng", "Momo-Tzuyu": "Tzumo",
+        "Jihyo-Sana": "SaHyo", "Mina-Sana": "SaMi", "Dahyun-Sana": "SaiDa", "Chaeyoung-Sana": "SaChaeng", "Sana-Tzuyu": "Satzu",
+        "Jihyo-Mina": "MiHyo", "Dahyun-Jihyo": "DaHyo", "Chaeyoung-Jihyo": "JiChaeng", "Jihyo-Tzuyu": "Jitzu",
+        "Dahyun-Mina": "DahMi", "Chaeyoung-Mina": "MiChaeng", "Mina-Tzuyu": "Mitzu",
+        "Chaeyoung-Dahyun": "DubChaeng", "Dahyun-Tzuyu": "DaTzu", "Chaeyoung-Tzuyu": "ChaeTzu"
+    };
+
+    let selected = [];
+
+    // สร้างปุ่มเลือกเมมเบอร์
+    const grid = document.getElementById('memberGrid');
+    Object.keys(memberPhotos).forEach(name => {
+        const div = document.createElement('div');
+        div.className = 'member-card';
+        div.innerHTML = `<img src="${memberPhotos[name]}"><div class="member-name">${name}</div>`;
+        div.onclick = () => {
+            if (selected.includes(name)) {
+                selected = selected.filter(x => x !== name);
+                div.classList.remove('selected');
+            } else if (selected.length < 2) {
+                selected.push(name);
+                div.classList.add('selected');
+                if (selected.length === 2) openModal();
+            }
+        };
+        grid.appendChild(div);
+    });
+
+    function openModal() {
+        const key = [...selected].sort().join("-");
+        document.getElementById('shipNameDisplay').innerText = shipNames[key] || selected.join(" x ");
+        document.getElementById('img1').src = memberPhotos[selected[0]];
+        document.getElementById('img2').src = memberPhotos[selected[1]];
+        document.getElementById('voteModal').style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('voteModal').style.display = 'none';
+        selected = [];
+        document.querySelectorAll('.member-card').forEach(c => c.classList.remove('selected'));
+    }
+
+    function submitVote() {
+        const key = [...selected].sort().join("-"); // เก็บเป็นชื่อเมมเบอร์เพื่อให้ดึงรูปได้ง่าย
+        let data = JSON.parse(localStorage.getItem('twice_ship_v3')) || {};
+        data[key] = (data[key] || 0) + 1;
+        localStorage.setItem('twice_ship_v3', JSON.stringify(data));
+        closeModal();
+        renderResults();
+    }
+
+    function renderResults() {
+        const data = JSON.parse(localStorage.getItem('twice_ship_v3')) || {};
+        const res = document.getElementById('voteResults');
+        res.innerHTML = "";
+        
+        // เรียงคะแนนจากมากไปน้อย
+        Object.entries(data).sort((a,b) => b[1] - a[1]).forEach(([key, count]) => {
+            const [m1, m2] = key.split("-");
+            const shipName = shipNames[key] || `${m1} x ${m2}`;
+            
+            res.innerHTML += `
+                <div class="result-item">
+                    <div class="result-photos">
+                        <img src="${memberPhotos[m1]}" class="res-img">
+                        <img src="${memberPhotos[m2]}" class="res-img">
+                    </div>
+                    <div class="result-info">
+                        <span class="ship-title">${shipName}</span>
+                        <span class="member-sub">${m1} + ${m2}</span>
+                    </div>
+                    <div class="vote-count-badge">${count} โหวต</div>
+                </div>
+            `;
+        });
+    }
+
+    renderResults();
+</script>
+</body>
+</html>
