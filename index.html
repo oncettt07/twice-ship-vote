@@ -107,4 +107,85 @@
 
     let selected = [];
 
-    // สร้าง Grid เมม
+    // สร้าง Grid เมมเบอร์
+    const grid = document.getElementById('memberGrid');
+    Object.keys(memberPhotos).forEach(name => {
+        const div = document.createElement('div');
+        div.className = 'member-card';
+        div.innerHTML = `<img src="${memberPhotos[name]}"><div class="member-name">${name}</div>`;
+        div.onclick = () => {
+            if (selected.includes(name)) {
+                selected = selected.filter(x => x !== name);
+                div.classList.remove('selected');
+            } else if (selected.length < 2) {
+                selected.push(name);
+                div.classList.add('selected');
+                if (selected.length === 2) openModal();
+            }
+        };
+        grid.appendChild(div);
+    });
+
+    function openModal() {
+        const key = [...selected].sort().join("-");
+        document.getElementById('shipNameDisplay').innerText = shipNames[key] || selected.join(" x ");
+        document.getElementById('img1').src = memberPhotos[selected[0]];
+        document.getElementById('img2').src = memberPhotos[selected[1]];
+        document.getElementById('voteModal').style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('voteModal').style.display = 'none';
+        selected = [];
+        document.querySelectorAll('.member-card').forEach(c => c.classList.remove('selected'));
+    }
+
+    // ส่งคะแนนไป Firebase
+    function submitVote() {
+        const key = [...selected].sort().join("-");
+        const votesRef = db.ref('votes/' + key);
+        votesRef.transaction((currentValue) => {
+            return (currentValue || 0) + 1;
+        });
+        closeModal();
+    }
+
+    // ดึงคะแนนจาก Firebase แบบ Real-time
+    function listenToVotes() {
+        db.ref('votes').on('value', (snapshot) => {
+            const data = snapshot.val() || {};
+            const res = document.getElementById('voteResults');
+            res.innerHTML = "";
+            
+            const sorted = Object.entries(data).sort((a,b) => b[1] - a[1]);
+            
+            if (sorted.length === 0) {
+                res.innerHTML = "<p style='color:#666;'>ยังไม่มีผลโหวต เริ่มโหวตเป็นคนแรกเลย!</p>";
+                return;
+            }
+
+            sorted.forEach(([key, count]) => {
+                const [m1, m2] = key.split("-");
+                const shipName = shipNames[key] || `${m1} x ${m2}`;
+                
+                res.innerHTML += `
+                    <div class="result-item">
+                        <div class="result-photos">
+                            <img src="${memberPhotos[m1]}" class="res-img">
+                            <img src="${memberPhotos[m2]}" class="res-img">
+                        </div>
+                        <div class="result-info">
+                            <span class="ship-title">${shipName}</span>
+                            <span class="member-sub">${m1} + ${m2}</span>
+                        </div>
+                        <div class="vote-count-badge">${count}</div>
+                    </div>
+                `;
+            });
+        });
+    }
+
+    listenToVotes();
+</script>
+</body>
+</html>
